@@ -1,0 +1,28 @@
+{
+    "ensemble_members": 4,
+    "noise_amplitude": 0.05,
+    "simulation_length": 60,
+    "weather_event": {
+        "properties": {
+            "name": "Globe",
+            "start_time": "2018-06-01 00:00:00",
+            "initial_condition_source": "era5"
+        },
+        "domains": [
+            {
+                "name": "global",
+                "type": "Window",
+                "diagnostics": [{"type": "raw", "channels": ["t2m", "u10m", "tcwv", "sp", "z500", "u500", "v500"]}]
+            }
+        ]
+    },
+    "output_path": "/pscratch/sd/a/amahesh/hens/earth2mip_swin_validation/",
+    "output_frequency": 1,
+    "weather_model": "swin_73var_zabspos_lr1em3_ep70_b95",
+    "seed": 12345,
+    "use_cuda_graphs": false,
+    "ensemble_batch_size": 1,
+    "autocast_fp16": false,
+    "perturbation_strategy": "correlated",
+    "noise_reddening": 2.0
+}

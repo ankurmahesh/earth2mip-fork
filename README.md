@@ -1,5 +1,21 @@
 # Earth-2 MIP (Alpha)
 
+# Guide for running swin with earth2mip
+
+`source set_interactive_vars.sh`: this sets the relevant environment variables for pytorch and for earth2mip.  Two important ones are the path to 73var dataset with q and the Earth2mip\_Model\_Registry. This also activates the conda environment that I have been using for running swin.
+
+`srun -N 1 --ntasks-per-node=4 --gpus-per-node=4 -u -n 4 python -m earth2mip.inference_ensemble config.json`: that is the run script that I use on the interactive queue.  It can be changed for a job script accordingly.
+
+Note: one thing that is in progress: I used to be able to run with more than 1 node.  I've been having some problems as of late: I think it's because of the modulus DistributedManager and SLURM-clusters.  Perhaps I have to do something with export\_DDP\_vars.sh
+
+# Creating a model registry for Swin
+
+The idea for a model registry to have everything necessary to run the model for inference.  This includes the weights, the global\_means.npy, etc.  There is another important file called `metadata.json` that specifies a loader function.  The loader function determines which loading method that earth2mip should use to load the model.  Loader function are specified in `earth2mip/loaders.py` for Swin.
+
+There are 2 swin versions that we have been using: `earth2mip/networks/swin/` and `earth2mip/networks/swin_residual/`.  The relevant loader loads the appropriate one based on the loader specified in the metada.json for the model.
+
+
+
 <!-- markdownlint-disable -->
 [![Project Status: Active - The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/wip.svg)](https://www.repostatus.org/#wip)
 [![GitHub](https://img.shields.io/github/license/NVIDIA/earth2mip)](https://github.com/NVIDIA/earth2mip/blob/master/LICENSE.txt)
