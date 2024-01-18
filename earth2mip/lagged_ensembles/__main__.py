@@ -96,18 +96,21 @@ async def lagged_average_simple(
 
 
 class Observations:
-    def __init__(self, times, pool, data_source, channel_names, device=None):
+    def __init__(self, times, pool, data_source, channel_names, grid, device=None):
         self.pool = pool
         self.device = device
         self.times = times
         self.data_source = data_source
         self.channel_names = channel_names
+        self.grid = grid
 
     def _get_time(self, time):
         index = pandas.Index(self.data_source.channel_names)
         indexer = index.get_indexer(self.channel_names)
         assert not numpy.any(indexer == -1)
         array = self.data_source[time][indexer]
+        if len(self.grid.lat) == 720:
+            array = array[: , :-1, :]
         return torch.from_numpy(array).to(self.device)
 
     async def __getitem__(self, i):
@@ -183,7 +186,10 @@ def main(args):
     data_source = hdf5.DataSource.from_path(args.data or config.ERA5_HDF5)
 
     try:
-        torch.distributed.init_process_group(backend="nccl", init_method="env://")
+        #torch.distributed.init_process_group(backend="nccl", init_method="env://")
+        rank = int(os.environ['SLURM_PROCID'])
+        world_size = int(os.environ['SLURM_NTASKS'])
+        torch.distributed.init_process_group(backend="nccl", rank=rank, world_size=world_size)
     except ValueError:
         pass
 
@@ -231,6 +237,7 @@ def main(args):
         data_source=data_source,
         device="cpu",
         channel_names=run_forecast.channel_names,
+        grid=run_forecast.grid
     )
     os.makedirs(args.output, exist_ok=True)
     output_path = os.path.join(args.output, f"{rank:03d}.csv")

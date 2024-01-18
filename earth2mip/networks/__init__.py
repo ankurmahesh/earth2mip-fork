@@ -157,7 +157,10 @@ class Inference(torch.nn.Module, time_loop.TimeLoop):
 
         self.model = model
         self.channel_names = channel_names
-        self.grid = grid
+        try:
+            self.grid = earth2mip.grid.from_enum(grid)
+        except:
+            self.grid = grid
         self.time_step = time_step
         self.n_history = n_history
         self.source = source
@@ -188,6 +191,7 @@ class Inference(torch.nn.Module, time_loop.TimeLoop):
         x: torch.Tensor,
         restart: Optional[Any] = None,
         normalize=True,
+        yield_initial=True
     ) -> Iterator[Tuple[datetime.datetime, torch.Tensor, Any]]:
         """
         Args:
@@ -207,9 +211,9 @@ class Inference(torch.nn.Module, time_loop.TimeLoop):
         if restart:
             yield from self._iterate(**restart)
         else:
-            yield from self._iterate(x=x, time=time)
+            yield from self._iterate(x=x, time=time, yield_initial=yield_initial)
 
-    def _iterate(self, x, normalize=True, time=None):
+    def _iterate(self, x, normalize=True, time=None, yield_initial=True):
         """Yield (time, unnormalized data, restart) tuples
 
         restart = (time, unnormalized data)
@@ -228,8 +232,9 @@ class Inference(torch.nn.Module, time_loop.TimeLoop):
                 x = (x - self.center) / self.scale
 
             # yield initial time for convenience
-            restart = dict(x=x, normalize=False, time=time)
-            yield time, self.scale * x[:, -1] + self.center, restart
+            if yield_initial:
+                restart = dict(x=x, normalize=False, time=time)
+                yield time, self.scale * x[:, -1] + self.center, restart
 
             while True:
                 if self.source:
