@@ -1,0 +1,170 @@
+lr: 1E-4
+max_epochs: 50
+pretrained: true
+two_step_training: true
+pretrained_ckpt_path: 
+  /pscratch/sd/s/shas1693/results/era5_wind/swin_73var_p4_wr80_e768_d24_dpr01_lr1em3_abspos_roll/0/training_checkpoints/best_ckpt.tar
+activation_ckpt: true
+add_zenith: true
+full_pos_embed: true
+rel_pos: false
+embed_dim: 768
+depth: 24
+nettype: swin
+patch_size: 4
+window_ratio: 80
+num_heads: 8
+batch_size: 64
+img_size: [720, 1440]
+log_to_wandb: true
+optimizer_type: Adam
+drop_path_rate: 0.1
+mlp_ratio: 4
+in_channels: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+  20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
+  40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59,
+  60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72]
+out_channels: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+  20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
+  40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59,
+  60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72]
+train_data_path: /pscratch/sd/p/pharring/73var-6hourly/staging/train
+valid_data_path: /pscratch/sd/p/pharring/73var-6hourly/staging/test
+inf_data_path: /pscratch/sd/p/pharring/73var-6hourly/staging/out_of_sample
+time_means_path: /pscratch/sd/p/pharring/73var-6hourly/staging/stats/time_means.npy
+global_means_path: /pscratch/sd/p/pharring/73var-6hourly/staging/stats/global_means.npy
+global_stds_path: /pscratch/sd/p/pharring/73var-6hourly/staging/stats/global_stds.npy
+channel_names:
+- u10m
+- v10m
+- u100m
+- v100m
+- t2m
+- sp
+- msl
+- tcwv
+- u50
+- u100
+- u150
+- u200
+- u250
+- u300
+- u400
+- u500
+- u600
+- u700
+- u850
+- u925
+- u1000
+- v50
+- v100
+- v150
+- v200
+- v250
+- v300
+- v400
+- v500
+- v600
+- v700
+- v850
+- v925
+- v1000
+- z50
+- z100
+- z150
+- z200
+- z250
+- z300
+- z400
+- z500
+- z600
+- z700
+- z850
+- z925
+- z1000
+- t50
+- t100
+- t150
+- t200
+- t250
+- t300
+- t400
+- t500
+- t600
+- t700
+- t850
+- t925
+- t1000
+- r50
+- r100
+- r150
+- r200
+- r250
+- r300
+- r400
+- r500
+- r600
+- r700
+- r850
+- r925
+- r1000
+
+scheduler: CosineAnnealingLR
+orography: false
+orography_path:
+exp_dir: /pscratch/sd/s/shas1693/results/weather/era5_swin
+loss: l2
+num_data_workers: 4
+dt: 1
+n_history: 0
+n_future: 0
+prediction_type: iterative
+prediction_length: 41
+n_initial_conditions: 5
+ics_type: default
+save_raw_forecasts: true
+save_channel: false
+masked_acc: false
+maskpath:
+perturb: false
+add_grid: false
+N_grid_channels: 0
+gridtype: sinusoidal
+roll: false
+num_blocks: 8
+width: 56
+modes: 32
+target: default
+normalization: zscore
+log_to_screen: true
+save_checkpoint: true
+enable_nhwc: false
+crop_size_x:
+crop_size_y:
+plot_animations: false
+add_noise: false
+noise_std: 0
+drop_rate: 0.
+weight_decay: 0
+residual: false
+rmse_loss: false
+relative_loss: true
+decoder_scale: 1
+add_extra_years: false
+interp_factor_x: 1
+interp_factor_y: 1
+project: ERA5_swin
+entity: weatherbenching
+img_shape_x_remove_pixel: 1
+world_size: 1
+interp: 0
+use_daily_climatology: false
+global_batch_size: 64
+experiment_dir: 
+  /pscratch/sd/s/shas1693/results/weather/era5_swin/swin_73var_zen_abspos_ft/year2018
+best_checkpoint_path: 
+  /pscratch/sd/s/shas1693/results/weather/era5_swin//swin_73var_zen_abspos_ft/0/training_checkpoints/best_ckpt.tar
+resuming: false
+local_rank: 0
+N_in_channels: 74
+N_out_channels: 73
