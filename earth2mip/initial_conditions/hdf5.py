@@ -19,11 +19,11 @@ import json
 import logging
 import os
 import warnings
-from typing import Any, Optional, List
+from typing import Any, List, Optional
 
+import numpy as np
 import s3fs
 import xarray
-import numpy as np
 
 from earth2mip import config, filesystem, grid
 from earth2mip.datasets import era5
@@ -68,6 +68,7 @@ class DataSource(base.DataSource):
         """
         self.root = root
         self.metadata = metadata
+
         if channel_names is None:
             self._channel_names = metadata["coords"]["channel"]
         else:

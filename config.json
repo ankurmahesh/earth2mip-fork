@@ -1,5 +1,5 @@
 {
-    "ensemble_members": 4,
+    "ensemble_members": 1,
     "noise_amplitude": 0.05,
     "simulation_length": 60,
     "weather_event": {
@@ -16,13 +16,13 @@
             }
         ]
     },
-    "output_path": "/pscratch/sd/a/amahesh/hens/earth2mip_swin_validation/",
+    "output_path": "/pscratch/sd/j/jwillard/FCN_exp/earth2mip_swin_validation/",
     "output_frequency": 1,
-    "weather_model": "swin_73var_zabspos_lr1em3_ep70_b95",
+    "weather_model": "swin_73var_geo_depth12",
     "seed": 12345,
     "use_cuda_graphs": false,
     "ensemble_batch_size": 1,
     "autocast_fp16": false,
-    "perturbation_strategy": "correlated",
+    "perturbation_strategy": "none",
     "noise_reddening": 2.0
 }

@@ -6,42 +6,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Release latest (released Aug MM, YYYY)
+## [0.2.0a1] - 2024-xx-xx
+- Changed earth2mip.inference\_ensemble to avoid reperturbing initial condition repeatedly.  this could lead to large initial condition perturbations if many ensemble members are run per rank.
+
+## [0.2.0a0] - 2024-xx-xx
 
 ### Added
 
-- `earth2mip.initial_conditions.cds.CDSDataSource`
-- `earth2mip.initial_conditions.cds.get`
-- Add `metadata` argument to `earth2mip.networks.get_model`.
-- Add `--model-metadata` flag to `earth2mip.inference_medium_range` and
-  `earth2mip.inference_ensemble`.
-- Add deepmind graphcast
+- Local Xarray data source
+- Diagnostic precipitation model example
+- `yield_lagged_ensembles` has max_lags, min_lags options. These allow for
+  non-centered lagged windows.
+- `earth2mip.lagged_ensembles` now has `--channels` to subselect channels
 
 ### Changed
-- `earth2mip.lagged_ensembles` and `inference_medium_range` CLI now write
-  metrics in a flat csv format. netCDF logic removed
-- `earth2mip.time_loop.TimeLoop.grid` and
-`earth2mip.initial_conditions.base.DataSource.grid` are now
-`earth2mip.grid.LatLonGrid` objects. Allows more flexible usage.
-- Save year in name of the folder of ensemble predictions
-- Sort the ensemble files before opening them with `glob` in `earth2mip/score_ensemble_outputs.py`
+
+- Refactored initial conditions / data source API
+- Updated GFS data source to pull from AWS
+- Updated IFS data source to use ECMWF's open data package
+- Change DLWP inferencer class to now work on 6 hr time-steps
+- Moving perturbation methods from inference ensemble into submodule
 
 ### Deprecated
 
 ### Removed
 
-- The `ERA5_HDF_73` and `TIME_MEAN_73` configurations have been removed. Used
-`ERA5_HDF` and `TIME_MEAN` instead to control the data used by the "era5" or
-"hrmip" initial condition sources.
-- `earth2mip.schema.ChannelSet` removed and
-`earth2mip.schema.Model.in_channel_names` added. **Some older model packages
-will be broken and can be fixed by adding .in_channel_names and
-.out_channel_names attributes to any metadata.json files**.
+- `earth2mip.xarray`
 
 ### Fixed
+
+- Fixed Graphcast implementation
+- Lagged ensembles now can run in parallel on arbitrary ranks
+- Fixed default cache location of file system
+- Fixed fs.glob search for H5 files
+- Corrected DLWP intial condition fetch with history
+- Corrected if statement for geopotential calculation in GFS initial conditions.
+- Fixed lexicon bug for u100m variable in GFS.
 
 ### Security
 
 ### Dependencies
 
-- Added eccodes, ecmwflibs, h5netcdf
+## [0.1.0] - 2023-11-17
+
+### Added
+
+- Initial public release of Earth-2 MIP.

@@ -15,21 +15,22 @@
 # limitations under the License.
 
 import datetime
-from earth2mip.initial_conditions import base
-from modulus.utils.filesystem import LOCAL_CACHE
-import xarray
-import numpy as np
-import shutil
-import pathlib
+import logging
 import os
-import requests
+import pathlib
+import shutil
 import warnings
 from dataclasses import dataclass
-from typing import List, Union, Dict
-from tqdm import tqdm
-import earth2mip.grid
+from typing import Dict, List, Union
 
-import logging
+import numpy as np
+import requests
+import xarray
+from modulus.utils.filesystem import LOCAL_CACHE
+from tqdm import tqdm
+
+import earth2mip.grid
+from earth2mip.initial_conditions import base
 
 logger = logging.getLogger(__name__)
 
@@ -218,7 +219,7 @@ def get(
             break
 
         # If geopotential height multiply by gravity to get geopotential
-        if name.startswith("HGT") == "z":
+        if name.startswith("HGT"):
             field = field * 9.81
         data[i] = field
 

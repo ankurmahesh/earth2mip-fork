@@ -33,6 +33,12 @@ def swin_from_yaml(fname, checkpoint_stages=False):
     params = SimpleNamespace()
     for k,v in hparams.items():
         setattr(params, k, v)
+    if params.add_zenith:
+        params.n_in_channels += 1
+        if params.add_landmask:
+            params.n_in_channels += 2
+        if params.add_orography:
+            params.n_in_channels += 1
     return swinv2net(params, checkpoint_stages=checkpoint_stages)
 
 

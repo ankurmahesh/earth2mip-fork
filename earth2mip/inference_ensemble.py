@@ -15,40 +15,39 @@
 # limitations under the License.
 
 import argparse
+import json
 import logging
 import os
 import sys
-import xarray
-import cftime
-import json
+from datetime import datetime
+from typing import Any, Optional
 
+import cftime
 import numpy as np
 import torch
 import tqdm
-from typing import Optional, Any
-from datetime import datetime
+import xarray
 from modulus.distributed.manager import DistributedManager
 from netCDF4 import Dataset as DS
+
 import earth2mip.grid
 
-__all__ = ["run_inference"]
+__all__ = ["run_inference", "run_basic_inference"]
 
 # need to import initial conditions first to avoid unfortunate
 # GLIBC version conflict when importing xarray. There are some unfortunate
 # issues with the environment.
-from earth2mip import initial_conditions, time_loop
+from earth2mip import initial_conditions, regrid, time_loop
+from earth2mip._channel_stds import channel_stds
 from earth2mip.ensemble_utils import (
-    generate_noise_correlated,
     generate_bred_vector,
+    generate_noise_correlated,
     generate_noise_grf,
 )
-
 from earth2mip.netcdf import initialize_netcdf, update_netcdf
 from earth2mip.networks import get_model
 from earth2mip.schema import EnsembleRun, PerturbationStrategy
 from earth2mip.time_loop import TimeLoop
-from earth2mip import regrid
-from earth2mip._channel_stds import channel_stds
 
 logger = logging.getLogger("inference")
 
@@ -102,7 +101,7 @@ def run_ensembles(
         batch_size = min(batch_size, n_ensemble - batch_id)
 
         x = x.repeat(batch_size, 1, 1, 1, 1)
-        x = perturb(x, rank, batch_id, model.device)
+        x_start = perturb(x, rank, batch_id, model.device)
         # restart_dir = weather_event.properties.restart
 
         # TODO: figure out if needed
@@ -118,7 +117,7 @@ def run_ensembles(
         #         time=time,
         #     )
 
-        iterator = model(initial_time, x)
+        iterator = model(initial_time, x_start)
 
         # Check if stdout is connected to a terminal
         if sys.stderr.isatty() and progress:
@@ -230,7 +229,8 @@ def get_initializer(
                 sigma=config.grf_noise_sigma,
                 alpha=config.grf_noise_alpha,
                 tau=config.grf_noise_tau,
-            ).to(device)
+                device=device,
+            )
         elif config.perturbation_strategy == PerturbationStrategy.bred_vector:
             noise = generate_bred_vector(
                 x,
@@ -253,7 +253,7 @@ def get_initializer(
         scale = torch.tensor(scale, device=x.device)
 
         if config.perturbation_channels is None:
-            x += noise * scale[:, None, None]
+            return x + noise * scale[:, None, None]
         else:
             channel_list = model.in_channel_names
             indices = torch.tensor(
@@ -376,7 +376,7 @@ def run_inference(
         nc.weather_event = weather_event.json()
         nc.date_created = datetime.now().isoformat()
         nc.history = " ".join(sys.argv)
-        nc.institution = "NVIDIA"
+        nc.institution = "NERSC"
         nc.Conventions = "CF-1.10"
 
         run_ensembles(

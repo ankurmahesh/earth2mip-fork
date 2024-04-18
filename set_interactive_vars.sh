@@ -1,9 +1,8 @@
 export MASTER_ADDR=$(hostname)
-export MODEL_REGISTRY=/pscratch/sd/a/amahesh/earth2mip_model_registry/
+export MODEL_REGISTRY=/pscratch/sd/j/jwillard/FCN_exp/earth2mip_model_registry/
 export MASTER_PORT=29500
-conda activate /global/common/software/m4416/fcn_mip-env/
+module load conda
+conda activate /global/cfs/cdirs/m4416/jared/fcn_mip-env_e2mip_update/
 export ERA5_HDF5=/pscratch/sd/p/pharring/73var-6hourly/staging/
+export CUDA_VISIBLE_DEVICES=3,2,1,0
 
-
-
-#srun --ntasks-per-node=4 --cpus-per-task=32 --gpus-per-node=4 --gpu-bind=map_gpu:0,1,2,3 -n 4 python3 -u -m fcn_mip.inference_ensemble interactiveq_config.json

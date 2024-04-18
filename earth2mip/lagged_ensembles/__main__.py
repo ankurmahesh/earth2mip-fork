@@ -14,63 +14,65 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
 from typing import List
 import os
+import psutil
 import asyncio
 import concurrent.futures
 import datetime
 import logging
-from functools import partial
-import argparse
-import pandas
-
-import cupy
-import torch
-import xarray
-
-from earth2mip import forecasts, _cli_utils
-from earth2mip.initial_conditions import hdf5
-from earth2mip.datasets.hindcast import open_forecast
-from earth2mip.lagged_ensembles import core
-from earth2mip.xarray import metrics
-import earth2mip.forecast_metrics_io
-import earth2mip.grid
-from earth2mip import config
+import os
+from typing import List
 
 # patch the proper scoring imports
-import numpy
-
-use_cupy = True
-if use_cupy:
-    import cupy as np
-else:
-    import numpy as np
-
+import torch
+import numpy as np
+import pandas as pd
+import earth2mip.forecast_metrics_io
+import earth2mip.grid
+from earth2mip import _cli_utils, config, forecasts
+from earth2mip.datasets.hindcast import open_forecast
+from earth2mip.initial_conditions import get_data_from_source, hdf5
+from earth2mip.lagged_ensembles import core, score
 
 logger = logging.getLogger(__name__)
 
+def log_memory_usage(message=""):
+    process = psutil.Process(os.getpid())
+    cpu_mem = process.memory_info().rss / 1024 ** 3  # Convert bytes to GB
+    logger.info(f"{message} - CPU Memory Usage: {cpu_mem:.2f} GB")
+    
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+        cuda_mem_allocated = torch.cuda.memory_allocated(device) / 1024 ** 3  # Convert bytes to GB
+        cuda_mem_reserved = torch.cuda.memory_reserved(device) / 1024 ** 3
+        logger.info(f"{message} - CUDA Memory allocated: {cuda_mem_allocated:.2f} GB; Memory cached: {cuda_mem_reserved:.2f} GB")
+    else:
+        logger.info(f"{message} - CUDA not available.")
 
 async def lagged_average_simple(
     *,
     observations,
     run_forecast,
-    score,
     lags=2,
     n=10,
     times: List[datetime.datetime],
     time_step: datetime.timedelta,
     filename: str,
 ):
-    async for (j, l), ensemble, obs in core.yield_lagged_ensembles(
+    async for (j, k), ensemble, obs in core.yield_lagged_ensembles(
         observations=observations,
         forecast=run_forecast,
-        lags=lags,
+        min_lag=-lags,
+        max_lag=lags,
         n=n,
     ):
-        initial_time = times[j] - l * time_step
-        lead_time = time_step * l
+        initial_time = times[j] - k * time_step
+        lead_time = time_step * k
 
-        out = score(ensemble, obs)
+        ensemble_cuda = {lag: x.cuda() for lag, x in ensemble.items()}
+        out = score.score(run_forecast.grid, ensemble_cuda, obs.cuda())
 
         with open(filename, "a") as f:
             earth2mip.forecast_metrics_io.write_metric(
@@ -82,7 +84,7 @@ async def lagged_average_simple(
                 value=len(ensemble),
             )
             for metric_name, darray in out.items():
-                assert darray.shape == (1, len(run_forecast.channel_names))
+                assert darray.shape == (len(run_forecast.channel_names),)  # noqa
                 for i in range(len(run_forecast.channel_names)):
                     earth2mip.forecast_metrics_io.write_metric(
                         f,
@@ -90,28 +92,46 @@ async def lagged_average_simple(
                         lead_time=lead_time,
                         channel=run_forecast.channel_names[i],
                         metric=metric_name,
-                        value=darray[0, i].item(),
+                        value=darray[i].item(),
                     )
         logger.info(f"finished with {initial_time} {lead_time}")
+        log_memory_usage("After forecast")
 
 
 class Observations:
-    def __init__(self, times, pool, data_source, channel_names, grid, device=None):
+    def __init__(
+        self,
+        times,
+        pool,
+        data_source,
+        channel_names,
+        grid: earth2mip.grid.LatLonGrid,
+        device: torch.device = torch.device("cpu"),
+    ):
         self.pool = pool
         self.device = device
         self.times = times
         self.data_source = data_source
         self.channel_names = channel_names
-        self.grid = grid
+        self._grid = grid
 
     def _get_time(self, time):
-        index = pandas.Index(self.data_source.channel_names)
-        indexer = index.get_indexer(self.channel_names)
-        assert not numpy.any(indexer == -1)
-        array = self.data_source[time][indexer]
-        if len(self.grid.lat) == 720:
-            array = array[: , :-1, :]
-        return torch.from_numpy(array).to(self.device)
+        # index = pd.Index(self.data_source.channel_names)
+        # indexer = index.get_indexer(self.channel_names)
+        # assert not np.any(indexer == -1)
+        # array = self.data_source[time][indexer]
+        # if len(self.grid.lat) == 720:
+        #     array = array[: , :-1, :]
+        x =  get_data_from_source(
+            self.data_source,
+            time,
+            self.channel_names,
+            self._grid,
+            n_history_levels=1,
+            device=self.device,
+        )
+        print("get time x: ", x.shape)
+        return x
 
     async def __getitem__(self, i):
         """
@@ -124,44 +144,6 @@ class Observations:
 
     def __len__(self):
         return len(self.times)
-
-
-def score(channel_names, grid: earth2mip.grid.LatLonGrid, ensemble, obs: np.ndarray):
-    """
-    Args:
-        ensemble: list of (c, ...)
-        obs: (c, ...)
-
-    Returns:gg
-        (c,)
-    """
-    import dask
-
-    dask.config.set(scheduler="single-threaded")
-    obs = xarray.DataArray(data=np.asarray(obs), dims=["channel", "lat", "lon"])
-    # need to run this after since pandas.Index doesn't support cupy
-    lat = xarray.DataArray(dims=["lat"], data=np.asarray(grid.lat))
-
-    out = {}
-    ens = torch.stack(list(ensemble.values()), dim=0)
-    ensemble_xr = xarray.DataArray(
-        data=np.asarray(ens), dims=["ensemble", "time", *obs.dims]
-    )
-    ensemble_xr = ensemble_xr.chunk(lat=32)
-    obs = obs.chunk(lat=32)
-    # need to chunk to avoid OOMs
-    with metrics.properscoring_with_cupy():
-        out = metrics.score_ensemble(
-            ensemble_xr, obs, lat=lat, ensemble_keys=list(ensemble)
-        )
-
-    mempool = cupy.get_default_memory_pool()
-    logger.debug(
-        "bytes used: %0.1f\ttotal: %0.1f",
-        mempool.used_bytes() / 2**30,
-        mempool.total_bytes() / 2**30,
-    )
-    return out
 
 
 def main(args):
@@ -226,6 +208,11 @@ def main(args):
             "need to provide one of --persistence --ifs --forecast-dir or --model."
         )
 
+    if args.channels:
+        run_forecast = forecasts.select_channels(
+            run_forecast, channel_names=args.channels.split(",")
+        )
+
     logger.info(
         f"number of timesteps: {len(times)}, "
         f"start time: {times[0]}, end_time: {times[-1]}"
@@ -236,16 +223,18 @@ def main(args):
         pool=pool,
         data_source=data_source,
         device="cpu",
+        grid=run_forecast.grid,
         channel_names=run_forecast.channel_names,
-        grid=run_forecast.grid
     )
+
+    logging.basicConfig(level=logging.INFO)
+
     os.makedirs(args.output, exist_ok=True)
     output_path = os.path.join(args.output, f"{rank:03d}.csv")
     print(f"saving scores to {output_path}")
     with torch.cuda.device(device), torch.no_grad():
         scores_future = lagged_average_simple(
             observations=obs,
-            score=partial(score, run_forecast.channel_names, run_forecast.grid),
             run_forecast=run_forecast,
             lags=args.lags,
             n=args.leads,
@@ -270,6 +259,14 @@ def parse_args():
     parser.add_argument("--lags", type=int, default=4, help="Number of lags")
     parser.add_argument("--leads", type=int, default=54, help="Number of leads")
     parser.add_argument("--output", type=str, default=".", help="Output directory")
+    parser.add_argument(
+        "--channels",
+        type=str,
+        default="",
+        help="Channels to score, comma seperated list."
+        "Example: 't2m,t850,z500,u10m,v10m'."
+        "Defaults to all channels in the forecast.",
+    )
 
     return parser.parse_args()
 

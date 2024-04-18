@@ -15,16 +15,13 @@
 # limitations under the License.
 
 # import this before torch to avoid GLIBC error
-import xarray
-import os
+import random as rand
 
+import numpy
 import pytest
+import torch
+
 from earth2mip import config
-import torch
-import os
-
-
-import torch
 
 
 def get_gpu_count():
@@ -48,3 +45,10 @@ def dist():
 @pytest.fixture()
 def ngpu():
     return get_gpu_count()
+
+
+@pytest.fixture
+def random():
+    rand.seed(0)
+    numpy.random.seed(0)
+    torch.manual_seed(0)

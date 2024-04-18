@@ -149,9 +149,9 @@ def torchscript(package, pretrained=True):
         torch._C._jit_set_texpr_fuser_enabled(False)
         torch._C._jit_set_nvfuser_enabled(False)
     if config["add_zenith"]:
-        from earth2mip.networks import CosZenWrapper
         import numpy as np
-        
+
+        from earth2mip.networks import CosZenWrapper
 
         lat = 90 - np.arange(721) * 0.25
         if package.metadata().grid == schema.Grid.grid_720x1440:
@@ -264,6 +264,7 @@ def _fix_state_dict_keys(state_dict, add_module=False):
         if add_module:
             new_key = "module." + key
         else:
+            continue
             new_key = key.replace("model.", "")
         fixed_state_dict[new_key] = value
     return fixed_state_dict
@@ -299,14 +300,67 @@ def _create_swin(package, architecture=None, constructor=swin.swinv2net):
         return CosZenWrapper(model, lon, lat)
     else:
         return Wrapper(model)
+    
+# def fix_state_dict(state_dict):
+#     # Add 'model.' prefix to each key
+#     return {f'model.{k}': v for k, v in state_dict.items()}
+
+# # Load the state dict with modification
+# model_state_dict = torch.load('path_to_saved_model.pth')
+# fixed_state_dict = fix_state_dict(model_state_dict)
+# model.load_state_dict(fixed_state_dict)
+
+    #     # Check for the extra "model." prefix in the state dictionary keys
+    # extra_prefix = 'model.'
+    # prefix_found = any(key.startswith(extra_prefix) for key in model_state_dict.keys())
+
+    # print(f"Extra '{extra_prefix}' prefix found in keys: {prefix_found}")
+
+    # # If the extra prefix is found, modify the state dict to remove the prefix
+    # if prefix_found:
+    #     corrected_state_dict = {key[len(extra_prefix):]: value 
+    #                             for key, value in model_state_dict.items()}
+    #     model_state_dict = corrected_state_dict
+
 
 def swin_loader(package, pretrained=True):
     model = _create_swin(package)
     path = package.get('weights.tar')
     checkpoint = torch.load(path)
+
     weights = checkpoint["model_state"]
-    weights = {k.replace('module', 'model'): v for k, v in weights.items()}
-    model.load_state_dict(weights, strict=True)
+    # Adjust the keys in the state dictionary
+    new_weights = {}
+    for key, value in weights.items():
+        new_key = key.replace('module.', '')  # Remove 'module.' if present
+
+        # Check for double 'model.' prefix and remove only one
+        if new_key.startswith('model.model.'):
+            new_key = new_key[len('model.'):]
+
+        new_weights[new_key] = value
+    model.load_state_dict(new_weights, strict=True)
+    model.eval()
+
+    return model
+
+def old_swin_loader(package, pretrained=True):
+    model = _create_swin(package)
+    path = package.get('weights.tar')
+    checkpoint = torch.load(path)
+
+    weights = checkpoint["model_state"]
+    # Adjust the keys in the state dictionary
+    new_weights = {}
+    for key, value in weights.items():
+        new_key = key.replace('module.', 'model.')  # Remove 'module.' if present
+
+        # Check for double 'model.' prefix and remove only one
+        # if new_key.startswith('model.model.'):
+        #     new_key = new_key[len('model.'):]
+
+        new_weights[new_key] = value
+    model.load_state_dict(new_weights, strict=True)
     model.eval()
 
     return model
