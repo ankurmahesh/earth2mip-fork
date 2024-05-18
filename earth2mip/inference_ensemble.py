@@ -45,6 +45,7 @@ from earth2mip.ensemble_utils import (
     CorrelatedSphericalField,
     generate_noise_correlated,
     generate_noise_grf,
+    load_eda_perturbation
 
 )
 from earth2mip.netcdf import initialize_netcdf, update_netcdf
@@ -121,7 +122,7 @@ def run_ensembles(
             subtract_perturbation = rank % 2 == 1
             nc["seed"][batch_id] = seed
         nc["subtract_perturbation"][batch_id] = subtract_perturbation
-        x_start = perturb(x, rank, batch_id, model.device, model_idx, subtract_perturbation=subtract_perturbation)
+        x_start = perturb(x, rank, batch_id, model.device, model_idx, subtract_perturbation=subtract_perturbation, seed=seed)
         # restart_dir = weather_event.properties.restart
 
         # TODO: figure out if needed
@@ -278,7 +279,7 @@ def get_initializer(
     model,
     config,
 ):
-    def perturb(x, rank, batch_id, device, model_idx, subtract_perturbation):
+    def perturb(x, rank, batch_id, device, model_idx, subtract_perturbation, seed):
         shape = x.shape
         if config.perturbation_strategy == PerturbationStrategy.gaussian:
             noise = config.noise_amplitude * torch.normal(
@@ -313,11 +314,18 @@ def get_initializer(
             noise = generate_bred_vector_timeevolve(
                 x,
                 model,
+                seed=seed,
                 time=config.weather_event.properties.start_time,
                 weather_event=config.get_weather_event()
             )
+            if config.add_eda:
+                print('adding eda')
+                eda_perturbation = load_eda_perturbation(seed, model, config.weather_event.properties.start_time)
+                noise += eda_perturbation
             if subtract_perturbation:
                 noise *= -1
+        elif config.perturbation_strategy == PerturbationStrategy.eda:
+            noise = load_eda_perturbation(seed, model, config.weather_event.properties.start_time)
         elif config.perturbation_strategy == PerturbationStrategy.none:
             return x
         if rank == 0 and batch_id == 0 and model_idx == 0 and config.seed is None:  # first ens-member is deterministic

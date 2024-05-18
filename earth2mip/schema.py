@@ -71,6 +71,7 @@ class PerturbationStrategy(Enum):
     bred_vector_timeevolve = "bred_vector_timeevolve"
     spherical_grf = "spherical_grf"
     none = "none"
+    eda = "eda"
 
 
 class EnsembleRun(pydantic.BaseModel):
@@ -123,6 +124,7 @@ class EnsembleRun(pydantic.BaseModel):
     grf_noise_sigma: float = 5.0
     grf_noise_tau: float = 2.0
     subtract_perturbation: Optional[bool] = None
+    add_eda: Optional[bool] = None
 
     def get_weather_event(self) -> weather_events.WeatherEvent:
         if self.forecast_name:

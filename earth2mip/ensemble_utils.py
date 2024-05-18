@@ -189,6 +189,7 @@ def brown_noise(shape, reddening=2):
 def generate_bred_vector_timeevolve(
     x: torch.Tensor,
     model: TimeLoop,
+    seed,
     weather_event, 
     time: Union[datetime, None] = None,
     integration_steps: int = 3,
@@ -203,6 +204,7 @@ def generate_bred_vector_timeevolve(
     channel_idx = list(range(len(model.channel_names)))
     channel_idx.remove(model.channel_names.index('z500'))
     dx[ :, list(channel_idx), : 721, : 1440] = 0
+    #dx = dx + (load_eda_perturbation(seed, model, time)[0] * model.scale)
 
     data_source = initial_conditions.get_data_source(
         model.in_channel_names,
@@ -530,3 +532,12 @@ class CorrelatedSphericalField(torch.nn.Module):
 
         return self
 
+def load_eda_perturbation(seed, model, time):
+    eda_ds = xr.open_zarr("/pscratch/sd/a/amahesh/hens/EDA_ERA5_2020_regridded.zarr").sel(time=time)
+    eda_ds = eda_ds.rename({'u10' : 'u10m',
+                            'v10' : 'v10m'})
+    eda = eda_ds.to_array().sel(variable=model.channel_names)
+    number = seed % 10
+    eda_perturbation = eda.sel(number=number) - eda.mean('number')
+    eda_perturbation = torch.from_numpy(eda_perturbation.values).to(model.device) * 2
+    return eda_perturbation[None, None] / model.scale
