@@ -193,7 +193,7 @@ def generate_bred_vector_timeevolve(
     time: Union[datetime, None] = None,
     integration_steps: int = 3,
 ) -> torch.Tensor:
-    optimization_target = _load_optimal_targets(48, model.channel_names).to(x.device).squeeze().to(torch.float32) * 0.35
+    optimization_target = _load_optimal_targets(6, model.channel_names).to(x.device).squeeze().to(torch.float32)
     sampler = CorrelatedSphericalField(720, 500. * 1000, 48.0, 1.0, N=74).to(
         x.device
     )

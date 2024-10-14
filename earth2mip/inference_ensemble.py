@@ -167,7 +167,7 @@ def run_ensembles(
                     domains,
                     batch_id,
                     time_count,
-                    model.grid,
+                    output_grid, #model.grid,
                     model.out_channel_names,
                 )
 
