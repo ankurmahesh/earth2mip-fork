@@ -220,11 +220,7 @@ def _owcrps(
 
 def calculate_owcrps_naive(ensemble, observed, threshold):
     """
-    Naively calculates owCRPS by iterating over each grid cell.  This is very slow.
-
-    The _owcrps method uses the CDF based calculation of owCRPS.  
-
-    This should result in the same output (allclose) as _owcrps sort-based method above"
+    Naively calculates owCRPS by iterating over each grid cell.  
     """
     print("Calculating owCRPS")
     threshold_gpu = torch.tensor(threshold, device=ensemble.device)
