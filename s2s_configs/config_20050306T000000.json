@@ -1,0 +1,35 @@
+{
+    "ensemble_members": 2,
+    "noise_amplitude": 0.01,
+    "simulation_length": 180,
+    "weather_event": {
+        "properties": {
+            "name": "Globe",
+            "start_time": "2005-03-06 00:00:00",
+            "initial_condition_source": "era5"
+        },
+        "domains": [
+            {
+                "name": "global",
+                "type": "Window",
+                "diagnostics": [{"type": "raw", "channels": ["z500","u850","v850","u200","v200","tcwv", "t2m"]},
+                {
+                    "type": "ivt",
+                    "channels": [
+                        "ivt"
+                    ]
+                }]
+            }
+        ]
+    },
+    "output_path": "/pscratch/sd/y/ypeings/HENS_data/s2s_20050306T000000//",
+    "output_frequency": 1,
+    "output_grid" : "s2s",
+    "weather_model": "multicheckpoint",
+    "use_cuda_graphs": false,
+    "ensemble_batch_size": 1,
+    "autocast_fp16": false,
+    "perturbation_strategy": "bred_vector_timeevolve",
+    "grf_noise_sigma" : 10, 
+    "noise_reddening": 2.0
+}
